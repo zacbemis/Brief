@@ -1,0 +1,12 @@
+[workspace]
+members = [
+    "crates/brief-diagnostic",
+    "crates/brief-ast",
+    "crates/brief-lexer",
+    "crates/brief-parser",
+    "crates/brief-bytecode",
+    "crates/brief-vm",
+    "crates/brief-runtime",
+    "crates/brief-cli",
+]
+resolver = "2"
