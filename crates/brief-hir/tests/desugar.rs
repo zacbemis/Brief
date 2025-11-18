@@ -146,7 +146,7 @@ fn test_desugar_for_loop() {
 
 #[test]
 fn test_desugar_nested_control_flow() {
-    let source = "def test()\n\tif (x)\n\t\tif (y)\n\t\t\tx++";
+    let source = "def test()\n\tx := 0\n\ty := 0\n\tif (x)\n\t\tif (y)\n\t\t\tx++";
     let hir = lower_source(source);
     
     // Nested control flow should be preserved

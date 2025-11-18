@@ -1,5 +1,6 @@
 ---
 source: crates/brief-parser/tests/snapshots.rs
+assertion_line: 708
 expression: pretty_print_ast(&program)
 ---
 Program
@@ -12,5 +13,6 @@ Program
         Block
           statements:
             Expr:
-Error
-    Error
+Cast
+                expr: Error
+                target_type: Int

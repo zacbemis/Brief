@@ -1,5 +1,6 @@
 ---
 source: crates/brief-parser/tests/snapshots.rs
+assertion_line: 664
 expression: pretty_print_ast(&program)
 ---
 Program
@@ -17,7 +18,7 @@ Program
       body:
         Block
           statements:
-            Expr:
-Error
-    Error
-    Error
+            Return
+              value: BinaryOp(Add)
+                  left: Variable(x)
+                  right: Variable(y)

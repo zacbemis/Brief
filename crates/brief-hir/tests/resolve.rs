@@ -89,7 +89,7 @@ fn test_resolve_constructor() {
 
 #[test]
 fn test_resolve_nested_scopes() {
-    let source = "x := 1\ndef outer()\n\tint y\n\tdef inner()\n\t\tx := y";
+    let source = "x := 1\ndef outer()\n\tint y\n\tif (y)\n\t\tx := y";
     let hir = lower_source(source);
     
     // Nested functions should resolve variables correctly

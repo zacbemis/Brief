@@ -441,8 +441,11 @@ impl Parser {
             }
             Some(TokenKind::LeftParen) => self.parse_grouping(),
             _ => {
+                let span = self.current_span();
                 self.error_at_current("Expected expression");
-                Expr::Error(self.current_span())
+                // Advance to avoid getting stuck on the same token
+                self.advance();
+                Expr::Error(span)
             }
         }
     }

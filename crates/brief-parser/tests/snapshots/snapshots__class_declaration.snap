@@ -1,5 +1,6 @@
 ---
 source: crates/brief-parser/tests/snapshots.rs
+assertion_line: 671
 expression: pretty_print_ast(&program)
 ---
 Program
@@ -15,5 +16,9 @@ Program
             Block
               statements:
                 Expr:
-Error
-    Error
+Call
+                    callee: Variable(print)
+                    args:
+Interpolation
+                        parts:
+                          Text("woof")

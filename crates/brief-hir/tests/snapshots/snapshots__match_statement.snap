@@ -1,5 +1,6 @@
 ---
 source: crates/brief-hir/tests/snapshots.rs
+assertion_line: 482
 expression: pretty_print_hir(&hir)
 ---
 HirProgram
@@ -14,15 +15,23 @@ HirProgram
       body:
         Block
           statements:
+            VarDecl
+              name: __temp_0
+              symbol: SymbolRef(0)
+              initializer: Variable(x, SymbolRef(0))
+
             Expr:
 Error
-    Error
-    Error
-    Error
-    Error
-    Error
-    Error
-    Error
+            Expr:
+Error
+            Expr:
+Integer(1)
+            Expr:
+Error
+            Return
+              value: Interpolation
+                  parts: 1 parts
+
     Error
     Error
     Error

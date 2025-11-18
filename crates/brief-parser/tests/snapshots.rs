@@ -12,6 +12,7 @@ fn pretty_print_ast(program: &Program) -> String {
 }
 
 /// Pretty-print AST with spans (for debug mode)
+#[allow(dead_code)]
 fn pretty_print_ast_with_spans(program: &Program) -> String {
     let mut output = String::new();
     pretty_print_program(program, &mut output, 0, true);

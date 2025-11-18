@@ -1,5 +1,6 @@
 ---
 source: crates/brief-hir/tests/snapshots.rs
+assertion_line: 510
 expression: pretty_print_hir(&hir)
 ---
 HirProgram
@@ -10,7 +11,7 @@ HirProgram
       initializer: Integer(1)
     VarDecl
       name: y
-      symbol: SymbolRef(2)
+      symbol: SymbolRef(1)
       initializer: BinaryOp(Add)
           left: Variable(x, SymbolRef(0))
           right: Integer(2)

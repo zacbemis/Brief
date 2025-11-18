@@ -1,5 +1,6 @@
 ---
 source: crates/brief-hir/tests/snapshots.rs
+assertion_line: 503
 expression: pretty_print_hir(&hir)
 ---
 HirProgram
@@ -20,7 +21,7 @@ HirProgram
       body:
         Block
           statements:
-            Expr:
-Error
-    Error
-    Error
+            Return
+              value: BinaryOp(Add)
+                  left: Variable(x, SymbolRef(0))
+                  right: Variable(y, SymbolRef(1))

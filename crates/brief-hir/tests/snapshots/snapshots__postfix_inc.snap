@@ -1,5 +1,6 @@
 ---
 source: crates/brief-hir/tests/snapshots.rs
+assertion_line: 461
 expression: pretty_print_hir(&hir)
 ---
 HirProgram
@@ -11,11 +12,14 @@ HirProgram
       body:
         Block
           statements:
+            VarDecl
+              name: x
+              symbol: SymbolRef(0)
+              initializer: Integer(1)
+
             Expr:
-Error
-    Error
-    VarDecl
-      name: x
-      symbol: SymbolRef(0)
-    Error
-    Error
+Assign
+                target: Variable(x, SymbolRef(0))
+                value: BinaryOp(Add)
+                    left: Variable(x, SymbolRef(0))
+                    right: Integer(1)

@@ -470,7 +470,7 @@ fn snapshot_postfix_dec() {
 
 #[test]
 fn snapshot_for_in_loop() {
-    let source = "def test()\n\tfor (num in arr)\n\t\tprint(num)";
+    let source = "int arr\ndef test()\n\tfor (num in arr)\n\t\tprint(num)";
     let hir = lower_source(source);
     assert_snapshot!("for_in_loop", pretty_print_hir(&hir));
 }
@@ -527,7 +527,7 @@ fn snapshot_lambda_expression() {
 
 #[test]
 fn snapshot_complex_desugaring() {
-    let source = "def test()\n\tfor (num in arr)\n\t\tprint(num)\n\t\tnum++";
+    let source = "int arr\ndef test()\n\tfor (num in arr)\n\t\tprint(num)\n\t\tnum++";
     let hir = lower_source(source);
     assert_snapshot!("complex_desugaring", pretty_print_hir(&hir));
 }

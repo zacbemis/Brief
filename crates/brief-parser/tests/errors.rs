@@ -10,7 +10,7 @@ fn test_missing_closing_paren() {
 
 #[test]
 fn test_missing_closing_brace() {
-    let errors = parse_errors("if (true)\n\tx := 1");
+    let _errors = parse_errors("if (true)\n\tx := 1");
     // This might not error if we handle indentation correctly
     // Adjust based on actual behavior
 }

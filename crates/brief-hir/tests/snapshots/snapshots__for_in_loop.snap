@@ -1,9 +1,14 @@
 ---
 source: crates/brief-hir/tests/snapshots.rs
+assertion_line: 475
 expression: pretty_print_hir(&hir)
 ---
 HirProgram
   declarations:
+    VarDecl
+      name: arr
+      symbol: SymbolRef(0)
+      type: Int
     FuncDecl
       name: test
       symbol: SymbolRef(0)
@@ -11,11 +16,38 @@ HirProgram
       body:
         Block
           statements:
-            Expr:
-Error
-    Error
-    Error
-    Error
-    Error
-    Error
-    Error
+            VarDecl
+              name: __temp_0
+              symbol: SymbolRef(1)
+              initializer: Integer(0)
+
+            While
+              condition: BinaryOp(Lt)
+                  left: Variable(__temp_0, SymbolRef(1))
+                  right: Call
+                      callee: Variable(len, SymbolRef(18446744073709551615))
+                      args:
+Variable(arr, SymbolRef(0))
+
+              body:
+                Block
+                  statements:
+                    VarDecl
+                      name: num
+                      symbol: SymbolRef(2)
+                      initializer: Index
+                          object: Variable(arr, SymbolRef(0))
+                          index: Variable(__temp_0, SymbolRef(1))
+
+                    Expr:
+Call
+                        callee: Variable(print, SymbolRef(18446744073709551615))
+                        args:
+Variable(num, SymbolRef(2))
+
+                    Expr:
+Assign
+                        target: Variable(__temp_0, SymbolRef(1))
+                        value: BinaryOp(Add)
+                            left: Variable(__temp_0, SymbolRef(1))
+                            right: Integer(1)
