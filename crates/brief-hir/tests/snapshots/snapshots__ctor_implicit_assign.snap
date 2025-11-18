@@ -1,0 +1,10 @@
+---
+source: crates/brief-hir/tests/snapshots.rs
+expression: pretty_print_hir(&hir)
+---
+HirProgram
+  declarations:
+    ClassDecl
+      name: Dog
+      symbol: SymbolRef(0)
+      methods:

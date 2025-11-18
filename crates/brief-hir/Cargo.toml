@@ -1,0 +1,14 @@
+[package]
+name = "brief-hir"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+brief-ast = { path = "../brief-ast" }
+brief-diagnostic = { path = "../brief-diagnostic" }
+
+[dev-dependencies]
+insta = "1.38"
+brief-lexer = { path = "../brief-lexer" }
+brief-parser = { path = "../brief-parser" }
+

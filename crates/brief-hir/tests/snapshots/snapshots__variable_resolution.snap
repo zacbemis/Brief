@@ -1,0 +1,16 @@
+---
+source: crates/brief-hir/tests/snapshots.rs
+expression: pretty_print_hir(&hir)
+---
+HirProgram
+  declarations:
+    VarDecl
+      name: x
+      symbol: SymbolRef(0)
+      initializer: Integer(1)
+    VarDecl
+      name: y
+      symbol: SymbolRef(2)
+      initializer: BinaryOp(Add)
+          left: Variable(x, SymbolRef(0))
+          right: Integer(2)

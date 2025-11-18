@@ -1,0 +1,25 @@
+---
+source: crates/brief-hir/tests/snapshots.rs
+expression: pretty_print_hir(&hir)
+---
+HirProgram
+  declarations:
+    FuncDecl
+      name: test
+      symbol: SymbolRef(0)
+      params:
+      body:
+        Block
+          statements:
+            Expr:
+Error
+    Error
+    Error
+    Error
+    Error
+    VarDecl
+      name: num
+      symbol: SymbolRef(0)
+    Error
+    Error
+    Error

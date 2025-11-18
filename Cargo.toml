@@ -4,6 +4,7 @@ members = [
     "crates/brief-ast",
     "crates/brief-lexer",
     "crates/brief-parser",
+    "crates/brief-hir",
     "crates/brief-bytecode",
     "crates/brief-vm",
     "crates/brief-runtime",
