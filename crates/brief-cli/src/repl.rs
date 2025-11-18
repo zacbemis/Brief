@@ -1,24 +1,24 @@
-use rustyline::error::ReadlineError;
-use rustyline::{Editor, Config, CompletionType, EditMode};
-use rustyline::highlight::MatchingBracketHighlighter;
-use rustyline::hint::HistoryHinter;
-use rustyline::validate::MatchingBracketValidator;
-use rustyline::validate::ValidationResult;
-use rustyline::validate::ValidationContext;
-use rustyline::validate::Validator;
-use rustyline::completion::{Completer, FilenameCompleter};
-use rustyline::hint::Hinter;
-use rustyline::highlight::Highlighter;
-use rustyline::Helper;
-use rustyline::Context;
-use rustyline::Result as RustylineResult;
+use crate::error::CliError;
+use brief_diagnostic::FileId;
+use brief_hir::{emit_bytecode, lower};
 use brief_lexer::lex;
 use brief_parser::parse;
-use brief_hir::{lower, emit_bytecode};
-use brief_vm::VM;
 use brief_runtime::Runtime;
-use brief_diagnostic::FileId;
-use crate::error::CliError;
+use brief_vm::{VM, Value};
+use rustyline::Context;
+use rustyline::Helper;
+use rustyline::Result as RustylineResult;
+use rustyline::completion::{Completer, FilenameCompleter};
+use rustyline::error::ReadlineError;
+use rustyline::highlight::Highlighter;
+use rustyline::highlight::MatchingBracketHighlighter;
+use rustyline::hint::Hinter;
+use rustyline::hint::HistoryHinter;
+use rustyline::validate::MatchingBracketValidator;
+use rustyline::validate::ValidationContext;
+use rustyline::validate::ValidationResult;
+use rustyline::validate::Validator;
+use rustyline::{CompletionType, Config, EditMode, Editor};
 
 struct BriefHelper {
     completer: FilenameCompleter,
@@ -90,37 +90,37 @@ pub fn repl() -> Result<(), CliError> {
         .edit_mode(EditMode::Emacs)
         .tab_stop(4) // 4 spaces per tab
         .build();
-    
+
     let h = BriefHelper {
         completer: FilenameCompleter::new(),
         highlighter: MatchingBracketHighlighter::default(),
         hinter: HistoryHinter {},
         validator: MatchingBracketValidator::new(),
     };
-    
+
     let mut rl = Editor::with_config(config)?;
     rl.set_helper(Some(h));
-    
+
     let file_id = FileId(0);
-    
+
     println!("Brief REPL");
     println!("Type 'exit' or 'quit' to exit, 'help' for help");
     println!("Press Enter to execute, or continue typing for multi-line input");
     println!("Tab inserts spaces for indentation");
-    
+
     let mut vm = VM::new();
     let runtime = Runtime::new();
     vm.set_runtime(Box::new(runtime));
-    
+
     loop {
         // Collect multi-line input
         let mut input = String::new();
         let mut is_first_line = true;
-        
+
         loop {
             let prompt = if is_first_line { "brief> " } else { "      " };
             let readline = rl.readline(prompt);
-            
+
             match readline {
                 Ok(line) => {
                     // Check for special commands (only on first line)
@@ -141,22 +141,22 @@ pub fn repl() -> Result<(), CliError> {
                             continue;
                         }
                     }
-                    
+
                     // If line is empty and we have input, execute
                     if line.trim().is_empty() && !input.is_empty() {
                         break;
                     }
-                    
+
                     // Add line to input
                     if !input.is_empty() {
                         input.push('\n');
                     }
                     input.push_str(&line);
                     is_first_line = false;
-                    
+
                     // Check if input looks complete (heuristic: ends with newline or is a simple expression)
                     // For now, continue collecting until empty line
-                },
+                }
                 Err(ReadlineError::Interrupted) => {
                     if input.is_empty() {
                         println!("CTRL-C");
@@ -167,7 +167,7 @@ pub fn repl() -> Result<(), CliError> {
                         is_first_line = true;
                         continue;
                     }
-                },
+                }
                 Err(ReadlineError::Eof) => {
                     if input.is_empty() {
                         println!("CTRL-D");
@@ -176,7 +176,7 @@ pub fn repl() -> Result<(), CliError> {
                         // Execute what we have
                         break;
                     }
-                },
+                }
                 Err(err) => {
                     eprintln!("Error: {:?}", err);
                     return Err(CliError::IoError(std::io::Error::new(
@@ -186,31 +186,32 @@ pub fn repl() -> Result<(), CliError> {
                 }
             }
         }
-        
+
         if input.trim().is_empty() {
             continue;
         }
-        
+
         // Add to history
         let _ = rl.add_history_entry(input.as_str());
-        
+
         // Wrap in a function for execution
         // The input may already be multi-line, so we need to indent each line
         let indented: String = input
             .lines()
-            .map(|line| format!("    {}", line))
+            .map(|line| format!("\t{}", line))
             .collect::<Vec<_>>()
             .join("\n");
         let wrapped = format!("def __repl__()\n{}\n", indented);
-        
+
         // Try to execute
         match execute_repl_line(&wrapped, file_id, &mut vm) {
-            Ok(Some(value)) => {
-                println!("{}", value);
-            },
-            Ok(None) => {
-                // Expression evaluated to null (void)
-            },
+            Ok(result) => {
+                if let Some(value) = result {
+                    if value != Value::Null {
+                        println!("{}", value);
+                    }
+                }
+            }
             Err(e) => {
                 eprintln!("Error: {}", e);
             }
@@ -232,7 +233,7 @@ fn execute_repl_line(
         }
         return Err(CliError::LexError);
     }
-    
+
     // 2. Parse
     let (program, parse_errors) = parse(tokens, file_id);
     if !parse_errors.is_empty() {
@@ -242,7 +243,7 @@ fn execute_repl_line(
         }
         return Err(CliError::ParseError);
     }
-    
+
     // 3. Lower to HIR
     let hir_program = match lower(program) {
         Ok(hir) => hir,
@@ -254,19 +255,24 @@ fn execute_repl_line(
             return Err(CliError::HirError(errors));
         }
     };
-    
+
     // 4. Emit bytecode
     let chunks = emit_bytecode(&hir_program);
-    
+
     if chunks.is_empty() {
         return Ok(None);
     }
-    
+
     // 5. Execute
     use std::rc::Rc;
-    let main_chunk = Rc::new(chunks[0].clone());
+    let target_chunk = chunks
+        .iter()
+        .find(|chunk| chunk.name == "__repl__")
+        .cloned()
+        .unwrap_or_else(|| chunks[0].clone());
+    let main_chunk = Rc::new(target_chunk);
     vm.push_frame(main_chunk, 0);
-    
+
     // 6. Run VM
     match vm.run() {
         Ok(value) => Ok(Some(value)),
@@ -276,4 +282,3 @@ fn execute_repl_line(
         }
     }
 }
-

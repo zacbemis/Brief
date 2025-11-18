@@ -1,4 +1,4 @@
-use brief_ast::InterpPart;
+use brief_ast::{InterpPart, BinaryOp};
 use brief_bytecode::*;
 use crate::hir::*;
 use crate::symbol::SymbolRef;
@@ -74,6 +74,42 @@ impl Emitter {
             }
         } else {
             panic!("Complex assignment target not yet supported");
+        }
+    }
+
+    fn emit_compound_assignment(
+        &mut self,
+        left: &HirExpr,
+        right: &HirExpr,
+        result_reg: u8,
+        op: BinaryOp,
+    ) {
+        let (name, symbol) = match left {
+            HirExpr::Variable { name, symbol, .. } => (name, symbol),
+            _ => panic!("Compound assignment target must be a variable"),
+        };
+
+        if *symbol == SymbolRef::BUILTIN {
+            panic!("Cannot assign to builtin '{}'", name);
+        }
+
+        let dest_reg = self.register_for_symbol(*symbol);
+        let right_reg = self.allocate_register();
+        self.emit_expr(right, right_reg);
+
+        let opcode = match op {
+            BinaryOp::PlusAssign => Opcode::ADD,
+            BinaryOp::MinusAssign => Opcode::SUB,
+            BinaryOp::StarAssign => Opcode::MUL,
+            BinaryOp::SlashAssign => Opcode::DIVF,
+            BinaryOp::PercentAssign => Opcode::MOD,
+            BinaryOp::PowAssign => Opcode::POW,
+            other => panic!("Unsupported compound assignment operator: {:?}", other),
+        };
+
+        self.emit_instruction(Instruction::new(opcode, dest_reg, dest_reg, right_reg));
+        if dest_reg != result_reg {
+            self.emit_instruction(Instruction::new2(Opcode::MOVE, result_reg, dest_reg));
         }
     }
 
@@ -499,6 +535,14 @@ impl Emitter {
                         self.emit_expr(right, target_reg);
                         let end_ip = self.get_ip();
                         self.patch_jump_target(skip_ip, end_ip);
+                    },
+                    brief_ast::BinaryOp::PlusAssign
+                    | brief_ast::BinaryOp::MinusAssign
+                    | brief_ast::BinaryOp::StarAssign
+                    | brief_ast::BinaryOp::SlashAssign
+                    | brief_ast::BinaryOp::PercentAssign
+                    | brief_ast::BinaryOp::PowAssign => {
+                        self.emit_compound_assignment(left, right, target_reg, *op);
                     },
                     _ => {
                         let left_reg = self.allocate_register();
