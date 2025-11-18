@@ -110,8 +110,8 @@ impl Parser {
         }
     }
 
-    pub(crate) fn expect(&mut self, kind: TokenKind, message: &str) -> Result<&Token, ()> {
-        self.consume(kind, message)
+    pub(crate) fn expect(&mut self, kind: TokenKind, message: &str) {
+        let _ = self.consume(kind, message);
     }
 
     pub(crate) fn current_span(&self) -> Span {

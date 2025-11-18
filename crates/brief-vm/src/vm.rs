@@ -9,8 +9,8 @@ use crate::error::RuntimeError;
 /// Virtual Machine for executing Brief bytecode
 pub struct VM {
     frames: Vec<Frame>,
-    heap: Heap,
-    globals: HashMap<String, Value>,
+    _heap: Heap,
+    _globals: HashMap<String, Value>,
     // Runtime for builtin functions (optional, stored as trait object to avoid circular dependency)
     runtime: Option<Box<dyn BuiltinRuntime>>,
 }
@@ -25,8 +25,8 @@ impl VM {
     pub fn new() -> Self {
         Self {
             frames: Vec::new(),
-            heap: Heap::new(),
-            globals: HashMap::new(),
+            _heap: Heap::new(),
+            _globals: HashMap::new(),
             runtime: None,
         }
     }

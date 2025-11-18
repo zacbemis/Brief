@@ -1,5 +1,6 @@
 /// Opcode definitions for Brief bytecode
 /// Fixed-size 32-bit instructions: [op(8)][a(8)][b(8)][c(8)]
+#[allow(non_camel_case_types)]
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Opcode {

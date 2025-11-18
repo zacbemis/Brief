@@ -68,7 +68,6 @@ fn pipeline_handles_builtin_calls() {
 }
 
 #[test]
-#[ignore = "while-loop emitter currently reuses condition registers causing runtime TypeMismatch"]
 fn pipeline_runs_loop() {
     run_vm("def test()\n\tx := 0\n\twhile (x < 3)\n\t\tx := x + 1\n\tret x").expect("while loop should run");
 }

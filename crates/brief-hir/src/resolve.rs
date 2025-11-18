@@ -24,9 +24,9 @@ pub fn resolve(program: &mut HirProgram) -> Result<(), Vec<HirError>> {
 struct Resolver {
     errors: Vec<HirError>,
     scopes: Vec<Scope>,
-    current_function: Option<usize>, // Index in symbol table for current function
+    _current_function: Option<usize>, // Reserved for future use
     local_count: usize,
-    upvalue_count: usize,
+    _upvalue_count: usize,
 }
 
 impl Resolver {
@@ -34,9 +34,9 @@ impl Resolver {
         Self {
             errors: Vec::new(),
             scopes: Vec::new(),
-            current_function: None,
+            _current_function: None,
             local_count: 0,
-            upvalue_count: 0,
+            _upvalue_count: 0,
         }
     }
 
@@ -194,6 +194,16 @@ impl Resolver {
     fn resolve_stmt(&mut self, stmt: &mut HirStmt) {
         match stmt {
             HirStmt::VarDecl(v) => {
+                // If a symbol with this name already exists in an outer scope,
+                // treat this as an assignment instead of introducing a new local.
+                if let Some(existing) = self.lookup_outer_scopes(&v.name) {
+                    v.symbol = existing;
+                    if let Some(init) = &mut v.initializer {
+                        self.resolve_expr(init);
+                    }
+                    return;
+                }
+
                 // Add to current scope
                 if let Some(symbol) = self.declare_symbol(&v.name, SymbolKind::Local(self.local_count), v.span) {
                     v.symbol = symbol;
@@ -297,7 +307,7 @@ impl Resolver {
                 self.resolve_expr(then_expr);
                 self.resolve_expr(else_expr);
             },
-            HirExpr::Lambda { params, captures, body, .. } => {
+            HirExpr::Lambda { params, body, .. } => {
                 // Create new scope for lambda
                 self.begin_scope();
                 
@@ -389,5 +399,17 @@ impl Resolver {
 
     fn end_scope(&mut self) {
         self.scopes.pop();
+    }
+
+    fn lookup_outer_scopes(&self, name: &str) -> Option<SymbolRef> {
+        if self.scopes.len() <= 1 {
+            return None;
+        }
+        for scope in self.scopes[..self.scopes.len() - 1].iter().rev() {
+            if let Some(symbol) = scope.lookup(name) {
+                return Some(symbol);
+            }
+        }
+        None
     }
 }

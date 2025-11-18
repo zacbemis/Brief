@@ -110,3 +110,34 @@ fn test_resolve_lambda() {
     }
     // If parsing/lowering fails, skip the test
 }
+
+#[test]
+fn test_reassignment_in_loop_reuses_symbol() {
+    let source = "def test()\n\tx := 0\n\twhile (x < 3)\n\t\tx := x + 1\n\tret x";
+    let hir = lower_source(source);
+
+    let func = match &hir.declarations[0] {
+        HirDecl::FuncDecl(f) => f,
+        _ => panic!("expected function declaration"),
+    };
+
+    let outer_symbol = match &func.body.statements[0] {
+        HirStmt::VarDecl(v) => v.symbol,
+        _ => panic!("expected first statement to be var decl"),
+    };
+
+    let while_body = match &func.body.statements[1] {
+        HirStmt::While { body, .. } => body,
+        other => panic!("expected while statement, got {:?}", other),
+    };
+
+    let loop_stmt = match &while_body.statements[0] {
+        HirStmt::VarDecl(v) => v,
+        other => panic!("expected var decl in loop body, got {:?}", other),
+    };
+
+    assert_eq!(
+        loop_stmt.symbol, outer_symbol,
+        "loop reassignment should reuse outer variable symbol"
+    );
+}

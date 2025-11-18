@@ -99,7 +99,7 @@ impl Desugarer {
         
         // Desugar implicit assignments: obj.param_name = param_name for each param
         // Only if not explicitly assigned in the body
-        let param_names: std::collections::HashSet<String> = ctor.params
+        let _param_names: std::collections::HashSet<String> = ctor.params
             .iter()
             .map(|p| p.name.clone())
             .collect();

@@ -1,6 +1,5 @@
 use rustyline::error::ReadlineError;
 use rustyline::{Editor, Config, CompletionType, EditMode};
-use rustyline::config::Configurer;
 use rustyline::highlight::MatchingBracketHighlighter;
 use rustyline::hint::HistoryHinter;
 use rustyline::validate::MatchingBracketValidator;
@@ -193,7 +192,7 @@ pub fn repl() -> Result<(), CliError> {
         }
         
         // Add to history
-        rl.add_history_entry(input.as_str());
+        let _ = rl.add_history_entry(input.as_str());
         
         // Wrap in a function for execution
         // The input may already be multi-line, so we need to indent each line

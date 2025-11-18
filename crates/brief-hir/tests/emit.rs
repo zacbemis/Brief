@@ -2,7 +2,6 @@ use brief_lexer::lex;
 use brief_parser::parse;
 use brief_hir::{lower, emit_bytecode};
 use brief_diagnostic::FileId;
-use brief_bytecode::*;
 
 fn emit_source(source: &str) -> Vec<brief_bytecode::Chunk> {
     let file_id = FileId(0);

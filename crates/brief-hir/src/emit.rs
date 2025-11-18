@@ -94,6 +94,7 @@ impl Emitter {
         self.chunks[idx].ip()
     }
 
+    #[allow(dead_code)]
     fn patch_instruction(&mut self, ip: usize, instruction: Instruction) {
         let idx = self.current_chunk_idx();
         self.chunks[idx].patch(ip, instruction);
@@ -502,7 +503,7 @@ impl Emitter {
                 
                 self.emit_instruction(Instruction::new(Opcode::CALL, target_reg, callee_reg, args.len() as u8));
             },
-            HirExpr::MethodCall { object, method, args, .. } => {
+            HirExpr::MethodCall { object, .. } => {
                 // TODO: Implement method calls
                 // For now, treat as regular call
                 let obj_reg = self.allocate_register();

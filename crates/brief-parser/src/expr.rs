@@ -469,7 +469,7 @@ impl Parser {
         // Parse StrPart
         if let Some(TokenKind::StrPart(text)) = self.peek_kind() {
             let text = text.clone();
-            let token = self.advance().unwrap();
+            self.advance();
             if !text.is_empty() {
                 parts.push(InterpPart::Text(text));
             }
@@ -497,7 +497,7 @@ impl Parser {
                         parts.push(InterpPart::Path(expr, span));
                     }
                     TokenKind::StrPart(text) => {
-                        let token = self.advance().unwrap();
+                        self.advance();
                         if !text.is_empty() {
                             parts.push(InterpPart::Text(text));
                         }
