@@ -8,3 +8,6 @@ pub use value::*;
 pub use frame::*;
 pub use error::*;
 pub use vm::*;
+
+// Re-export BuiltinRuntime trait for runtime crate
+pub use vm::BuiltinRuntime;

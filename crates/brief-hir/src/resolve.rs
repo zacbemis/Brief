@@ -3,6 +3,18 @@ use crate::hir::*;
 use crate::symbol::*;
 use crate::error::HirError;
 
+const BUILTINS: &[&str] = &[
+    "print",
+    "len",
+    "int",
+    "dub",
+    "str",
+    "rt_concat2",
+    "rt_concat3",
+    "rt_concat4",
+    "rt_concat5",
+];
+
 /// Resolve names in HIR and populate symbol tables
 pub fn resolve(program: &mut HirProgram) -> Result<(), Vec<HirError>> {
     let mut resolver = Resolver::new();
@@ -52,7 +64,6 @@ impl Resolver {
                 // Add to current scope
                 if let Some(symbol) = self.declare_symbol(&v.name, SymbolKind::Local(self.local_count), v.span) {
                     v.symbol = symbol;
-                    self.local_count += 1;
                 }
                 // Resolve initializer
                 if let Some(init) = &mut v.initializer {
@@ -63,7 +74,6 @@ impl Resolver {
                 // Add to current scope
                 if let Some(symbol) = self.declare_symbol(&c.name, SymbolKind::Local(self.local_count), c.span) {
                     c.symbol = symbol;
-                    self.local_count += 1;
                 }
                 // Resolve initializer
                 self.resolve_expr(&mut c.initializer);
@@ -187,7 +197,6 @@ impl Resolver {
                 // Add to current scope
                 if let Some(symbol) = self.declare_symbol(&v.name, SymbolKind::Local(self.local_count), v.span) {
                     v.symbol = symbol;
-                    self.local_count += 1;
                 }
                 // Resolve initializer
                 if let Some(init) = &mut v.initializer {
@@ -198,7 +207,6 @@ impl Resolver {
                 // Add to current scope
                 if let Some(symbol) = self.declare_symbol(&c.name, SymbolKind::Local(self.local_count), c.span) {
                     c.symbol = symbol;
-                    self.local_count += 1;
                 }
                 // Resolve initializer
                 self.resolve_expr(&mut c.initializer);
@@ -325,13 +333,21 @@ impl Resolver {
                 return Some(symbol);
             }
         }
-        
+
+        if Self::is_builtin(name) {
+            return Some(SymbolRef::BUILTIN);
+        }
+
         // Not found - report error
         self.errors.push(HirError::UndefinedVariable {
             name: name.to_string(),
             span,
         });
         None
+    }
+
+    fn is_builtin(name: &str) -> bool {
+        BUILTINS.contains(&name)
     }
 
     fn declare_symbol(&mut self, name: &str, kind: SymbolKind, span: Span) -> Option<SymbolRef> {

@@ -37,13 +37,39 @@ impl Parser {
 
     /// Check if we're at the start of a declaration
     fn is_declaration_start(&self) -> bool {
-        self.check(&TokenKind::Const) || self.is_type_keyword() || self.is_identifier()
+        if self.check(&TokenKind::Const) {
+            return true;
+        }
+
+        if self.is_type_keyword() {
+            if let Some(next) = self.peek_nth(1) {
+                return matches!(next.kind,
+                    TokenKind::Identifier(_)
+                    | TokenKind::LeftBracket
+                    | TokenKind::LeftBrace
+                );
+            }
+            return false;
+        }
+
+        if self.is_identifier() {
+            if let Some(next) = self.peek_nth(1) {
+                return matches!(next.kind, TokenKind::InitAssign);
+            }
+        }
+
+        false
     }
 
     /// Parse a block (indentation-based)
     pub fn parse_block(&mut self) -> Block {
         let start_span = self.current_span();
         let mut statements = Vec::new();
+
+        // Consume any leading newlines
+        while self.check(&TokenKind::Newline) {
+            self.advance();
+        }
 
         // Check if we have an Indent token (multi-line block)
         if self.check(&TokenKind::Indent) {

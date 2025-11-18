@@ -423,6 +423,22 @@ impl Parser {
                 let span = self.previous().unwrap().span;
                 Expr::Variable(name, span)
             }
+            Some(TokenKind::Int)
+            | Some(TokenKind::Char)
+            | Some(TokenKind::Str)
+            | Some(TokenKind::Dub)
+            | Some(TokenKind::Bool) => {
+                let token = self.advance().unwrap();
+                let name = match &token.kind {
+                    TokenKind::Int => "int",
+                    TokenKind::Char => "char",
+                    TokenKind::Str => "str",
+                    TokenKind::Dub => "dub",
+                    TokenKind::Bool => "bool",
+                    _ => unreachable!(),
+                };
+                Expr::Variable(name.to_string(), token.span)
+            }
             Some(TokenKind::LeftParen) => self.parse_grouping(),
             _ => {
                 self.error_at_current("Expected expression");

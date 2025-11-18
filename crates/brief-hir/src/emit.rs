@@ -1,3 +1,4 @@
+use brief_ast::InterpPart;
 use brief_bytecode::*;
 use crate::hir::*;
 use crate::symbol::SymbolRef;
@@ -36,6 +37,44 @@ impl Emitter {
             self.max_registers = self.register_counter;
         }
         reg
+    }
+
+    fn reserve_register(&mut self, reg: u8) {
+        let needed = reg.saturating_add(1);
+        if needed > self.register_counter {
+            self.register_counter = needed;
+        }
+        if needed > self.max_registers {
+            self.max_registers = needed;
+        }
+    }
+
+    fn register_for_symbol(&mut self, symbol: SymbolRef) -> u8 {
+        let reg = symbol.0 as u8;
+        self.reserve_register(reg);
+        reg
+    }
+
+    fn emit_null_return(&mut self) {
+        let null_idx = self.add_constant(Constant::Null);
+        let reg = self.allocate_register();
+        self.emit_instruction(Instruction::new2(Opcode::LOADK, reg, null_idx));
+        self.emit_instruction(Instruction::new1(Opcode::RET, reg));
+    }
+
+    fn emit_assign_expr(&mut self, target: &HirExpr, value: &HirExpr, result_reg: u8) {
+        if let HirExpr::Variable { name, symbol, .. } = target {
+            if *symbol == SymbolRef::BUILTIN {
+                panic!("Cannot assign to builtin '{}'", name);
+            }
+            let dest_reg = self.register_for_symbol(*symbol);
+            self.emit_expr(value, dest_reg);
+            if dest_reg != result_reg {
+                self.emit_instruction(Instruction::new2(Opcode::MOVE, result_reg, dest_reg));
+            }
+        } else {
+            panic!("Complex assignment target not yet supported");
+        }
     }
 
     fn emit_instruction(&mut self, instruction: Instruction) -> usize {
@@ -103,6 +142,7 @@ impl Emitter {
         
         // Emit function body
         self.emit_block(&func.body);
+        self.emit_null_return();
         
         // Update chunk metadata
         let idx = self.current_chunk_idx();
@@ -123,6 +163,7 @@ impl Emitter {
         
         // Emit method body
         self.emit_block(&method.body);
+        self.emit_null_return();
         
         // Update chunk metadata
         let idx = self.current_chunk_idx();
@@ -143,6 +184,7 @@ impl Emitter {
         
         // Emit constructor body
         self.emit_block(&ctor.body);
+        self.emit_null_return();
         
         // Update chunk metadata
         let idx = self.current_chunk_idx();
@@ -161,14 +203,17 @@ impl Emitter {
     fn emit_stmt(&mut self, stmt: &HirStmt) {
         match stmt {
             HirStmt::VarDecl(v) => {
+                let target_reg = self.register_for_symbol(v.symbol);
                 if let Some(init) = &v.initializer {
-                    let reg = self.allocate_register();
-                    self.emit_expr(init, reg);
+                    self.emit_expr(init, target_reg);
+                } else {
+                    let null_idx = self.add_constant(Constant::Null);
+                    self.emit_instruction(Instruction::new2(Opcode::LOADK, target_reg, null_idx));
                 }
             },
             HirStmt::ConstDecl(c) => {
-                let reg = self.allocate_register();
-                self.emit_expr(&c.initializer, reg);
+                let target_reg = self.register_for_symbol(c.symbol);
+                self.emit_expr(&c.initializer, target_reg);
             },
             HirStmt::If { condition, then_branch, else_branch, .. } => {
                 self.emit_if(condition, then_branch, else_branch);
@@ -337,51 +382,69 @@ impl Emitter {
                 let idx = self.add_constant(Constant::Int(*c as i64));
                 self.emit_instruction(Instruction::new2(Opcode::LOADK, target_reg, idx));
             },
-            HirExpr::Variable { symbol, .. } => {
-                // Variable is already in a register (from symbol table)
-                // For now, assume symbol.0 is the register index
-                let src_reg = symbol.0 as u8;
-                if src_reg != target_reg {
-                    self.emit_instruction(Instruction::new2(Opcode::MOVE, target_reg, src_reg));
+            HirExpr::Variable { name, symbol, .. } => {
+                if *symbol == SymbolRef::BUILTIN {
+                    let idx = self.add_constant(Constant::Str(name.clone()));
+                    self.emit_instruction(Instruction::new2(Opcode::LOADK, target_reg, idx));
+                } else {
+                    let src_reg = self.register_for_symbol(*symbol);
+                    if src_reg != target_reg {
+                        self.emit_instruction(Instruction::new2(Opcode::MOVE, target_reg, src_reg));
+                    }
                 }
             },
             HirExpr::BinaryOp { left, op, right, .. } => {
-                let left_reg = self.allocate_register();
-                let right_reg = self.allocate_register();
-                self.emit_expr(left, left_reg);
-                self.emit_expr(right, right_reg);
-                
-                let opcode = match op {
-                    brief_ast::BinaryOp::Add => Opcode::ADD,
-                    brief_ast::BinaryOp::Sub => Opcode::SUB,
-                    brief_ast::BinaryOp::Mul => Opcode::MUL,
-                    brief_ast::BinaryOp::Div => Opcode::DIVF, // Default to float division
-                    brief_ast::BinaryOp::Mod => Opcode::MOD,
-                    brief_ast::BinaryOp::Pow => Opcode::POW,
-                    brief_ast::BinaryOp::Eq => Opcode::CMP_EQ,
-                    brief_ast::BinaryOp::Ne => Opcode::CMP_NE,
-                    brief_ast::BinaryOp::Lt => Opcode::CMP_LT,
-                    brief_ast::BinaryOp::Le => Opcode::CMP_LE,
-                    brief_ast::BinaryOp::Gt => Opcode::CMP_GT,
-                    brief_ast::BinaryOp::Ge => Opcode::CMP_GE,
+                if matches!(op, brief_ast::BinaryOp::Assign | brief_ast::BinaryOp::InitAssign) {
+                    self.emit_assign_expr(left, right, target_reg);
+                    return;
+                }
+                match op {
                     brief_ast::BinaryOp::And => {
-                        // Short-circuit evaluation - emit as if/else
-                        // For now, use simple AND (non-short-circuit)
-                        // TODO: Implement proper short-circuit
-                        Opcode::CMP_NE // Placeholder
+                        self.emit_expr(left, target_reg);
+                        let jif_ip = self.get_ip();
+                        self.emit_instruction(Instruction::new2(Opcode::JIF, target_reg, 0));
+                        self.emit_expr(right, target_reg);
+                        let end_ip = self.get_ip();
+                        let offset = (end_ip - jif_ip) as i16;
+                        self.patch_offset(jif_ip, offset);
                     },
                     brief_ast::BinaryOp::Or => {
-                        // Short-circuit evaluation
-                        // TODO: Implement proper short-circuit
-                        Opcode::CMP_NE // Placeholder
+                        self.emit_expr(left, target_reg);
+                        let jif_ip = self.get_ip();
+                        self.emit_instruction(Instruction::new2(Opcode::JIF, target_reg, 0));
+                        let skip_ip = self.get_ip();
+                        self.emit_instruction(Instruction::new1(Opcode::JMP, 0));
+                        let right_start = self.get_ip();
+                        self.patch_offset(jif_ip, (right_start - jif_ip) as i16);
+                        self.emit_expr(right, target_reg);
+                        let end_ip = self.get_ip();
+                        self.patch_offset(skip_ip, (end_ip - skip_ip) as i16);
                     },
                     _ => {
-                        // Assignment operators are desugared, shouldn't appear here
-                        panic!("Unexpected binary operator in HIR");
+                        let left_reg = self.allocate_register();
+                        let right_reg = self.allocate_register();
+                        self.emit_expr(left, left_reg);
+                        self.emit_expr(right, right_reg);
+                        
+                        let opcode = match op {
+                            brief_ast::BinaryOp::Add => Opcode::ADD,
+                            brief_ast::BinaryOp::Sub => Opcode::SUB,
+                            brief_ast::BinaryOp::Mul => Opcode::MUL,
+                            brief_ast::BinaryOp::Div => Opcode::DIVF, // Default to float division
+                            brief_ast::BinaryOp::Mod => Opcode::MOD,
+                            brief_ast::BinaryOp::Pow => Opcode::POW,
+                            brief_ast::BinaryOp::Eq => Opcode::CMP_EQ,
+                            brief_ast::BinaryOp::Ne => Opcode::CMP_NE,
+                            brief_ast::BinaryOp::Lt => Opcode::CMP_LT,
+                            brief_ast::BinaryOp::Le => Opcode::CMP_LE,
+                            brief_ast::BinaryOp::Gt => Opcode::CMP_GT,
+                            brief_ast::BinaryOp::Ge => Opcode::CMP_GE,
+                            _ => panic!("Unexpected binary operator in HIR: {:?}", op),
+                        };
+                        
+                        self.emit_instruction(Instruction::new(opcode, target_reg, left_reg, right_reg));
                     }
-                };
-                
-                self.emit_instruction(Instruction::new(opcode, target_reg, left_reg, right_reg));
+                }
             },
             HirExpr::UnaryOp { op, expr, .. } => {
                 let expr_reg = self.allocate_register();
@@ -402,8 +465,11 @@ impl Emitter {
                 
                 // Emit target (get register)
                 // For now, assume target is a variable
-                if let HirExpr::Variable { symbol, .. } = target.as_ref() {
-                    let target_reg = symbol.0 as u8;
+                if let HirExpr::Variable { name, symbol, .. } = target.as_ref() {
+                    if *symbol == SymbolRef::BUILTIN {
+                        panic!("Cannot assign to builtin '{}'", name);
+                    }
+                    let target_reg = self.register_for_symbol(*symbol);
                     self.emit_instruction(Instruction::new2(Opcode::MOVE, target_reg, value_reg));
                 } else {
                     // TODO: Handle member access, index, etc.
@@ -458,10 +524,21 @@ impl Emitter {
                 // TODO: Implement type casting
                 panic!("Type casting not yet implemented");
             },
-            HirExpr::Interpolation { .. } => {
-                // TODO: Implement string interpolation
-                // String interpolation should be desugared to concat calls
-                panic!("String interpolation not yet implemented");
+            HirExpr::Interpolation { parts, .. } => {
+                // Support plain strings (no embedded expressions) for now
+                if parts.iter().all(|part| matches!(part, InterpPart::Text(_))) {
+                    let mut text = String::new();
+                    for part in parts {
+                        if let InterpPart::Text(chunk) = part {
+                            text.push_str(chunk);
+                        }
+                    }
+                    let idx = self.add_constant(Constant::Str(text));
+                    self.emit_instruction(Instruction::new2(Opcode::LOADK, target_reg, idx));
+                } else {
+                    // TODO: Implement string interpolation lowering
+                    panic!("String interpolation with expressions not yet implemented");
+                }
             },
             HirExpr::Ternary { condition, then_expr, else_expr, .. } => {
                 // Emit as if/else

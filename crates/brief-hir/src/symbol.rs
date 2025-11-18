@@ -4,6 +4,10 @@ use brief_diagnostic::Span;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SymbolRef(pub usize);
 
+impl SymbolRef {
+    pub const BUILTIN: Self = Self(usize::MAX);
+}
+
 /// Symbol kind indicating where the symbol is stored
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SymbolKind {

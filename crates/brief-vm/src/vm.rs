@@ -11,7 +11,14 @@ pub struct VM {
     frames: Vec<Frame>,
     heap: Heap,
     globals: HashMap<String, Value>,
-    // Runtime will be added later
+    // Runtime for builtin functions (optional, stored as trait object to avoid circular dependency)
+    runtime: Option<Box<dyn BuiltinRuntime>>,
+}
+
+/// Trait for builtin function runtime (to avoid circular dependency)
+pub trait BuiltinRuntime: Send + Sync {
+    fn call_builtin(&self, name: &str, args: &[Value]) -> Result<Value, RuntimeError>;
+    fn is_builtin(&self, name: &str) -> bool;
 }
 
 impl VM {
@@ -20,7 +27,13 @@ impl VM {
             frames: Vec::new(),
             heap: Heap::new(),
             globals: HashMap::new(),
+            runtime: None,
         }
+    }
+    
+    /// Set the runtime
+    pub fn set_runtime(&mut self, runtime: Box<dyn BuiltinRuntime>) {
+        self.runtime = Some(runtime);
     }
 
     /// Get current frame (mutable)
@@ -282,9 +295,54 @@ impl VM {
         Ok(())
     }
 
-    fn call(&mut self, _dest: u8, _callee_reg: u8, _arg_count: u8) -> Result<(), RuntimeError> {
-        // TODO: Implement function calls
-        Err(RuntimeError::CallError("Function calls not yet implemented".to_string()))
+    fn call(&mut self, dest: u8, callee_reg: u8, arg_count: u8) -> Result<(), RuntimeError> {
+        // Extract all needed data first (function name and args)
+        let (function_name, args) = {
+            let frame = self.current_frame_mut()?;
+            if callee_reg as usize >= frame.registers.len() {
+                return Err(RuntimeError::InvalidRegister(callee_reg));
+            }
+            
+            // Extract function name if it's a string
+            let function_name = match &frame.registers[callee_reg as usize] {
+                Value::Str(name) => Some(name.clone()),
+                _ => None,
+            };
+            
+            // Collect arguments (starting at callee_reg + 1)
+            let mut args = Vec::new();
+            for i in 0..arg_count {
+                let arg_reg = callee_reg + 1 + i;
+                if arg_reg as usize >= frame.registers.len() {
+                    return Err(RuntimeError::InvalidRegister(arg_reg));
+                }
+                args.push(frame.registers[arg_reg as usize].clone());
+            }
+            
+            (function_name, args)
+        };
+        
+        // For now, assume callee is a string (function name) for builtin calls
+        // TODO: Support actual function objects when they're implemented
+        if let Some(function_name) = function_name {
+            // Try to call as builtin
+            let result = if let Some(runtime) = &self.runtime {
+                runtime.call_builtin(&function_name, &args)?
+            } else {
+                return Err(RuntimeError::CallError("Runtime not available for builtin calls".to_string()));
+            };
+            
+            // Store result in destination register
+            let frame = self.current_frame_mut()?;
+            if dest as usize >= frame.registers.len() {
+                return Err(RuntimeError::InvalidRegister(dest));
+            }
+            frame.registers[dest as usize] = result;
+            Ok(())
+        } else {
+            // TODO: Support function objects
+            Err(RuntimeError::CallError("Function calls not yet fully implemented".to_string()))
+        }
     }
 
     fn return_value(&mut self, value_reg: u8) -> Result<Value, RuntimeError> {

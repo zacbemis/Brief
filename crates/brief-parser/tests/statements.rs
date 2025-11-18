@@ -127,6 +127,43 @@ fn test_expression_statement() {
 }
 
 #[test]
+fn test_identifier_call_stays_expression() {
+    let program = parse_source("def test()\n\tx := 1\n\tfoo()");
+    let decl = &program.declarations[0];
+    let func = match decl {
+        Decl::FuncDecl(f) => f,
+        _ => panic!("Expected function declaration"),
+    };
+    assert_eq!(func.body.statements.len(), 2);
+    match &func.body.statements[1] {
+        Stmt::Expr(Expr::Call { .. }, _) => {}
+        other => panic!("Expected call expression statement, got {:?}", other),
+    }
+}
+
+#[test]
+fn test_builtin_identifier_call_is_not_declaration() {
+    let program = parse_source("def test()\n\tret int(3.14)");
+    let func = match &program.declarations[0] {
+        Decl::FuncDecl(f) => f,
+        _ => panic!("Expected function declaration"),
+    };
+    match &func.body.statements[0] {
+        Stmt::Return { value: Some(expr), .. } => match expr {
+            Expr::Call { callee, args, .. } => {
+                assert_eq!(args.len(), 1, "expected single argument to int()");
+                match &**callee {
+                    Expr::Variable(name, _) => assert_eq!(name, "int"),
+                    other => panic!("expected variable callee, got {:?}", other),
+                }
+            }
+            other => panic!("expected call expression in return, got {:?}", other),
+        },
+        other => panic!("expected return statement, got {:?}", other),
+    }
+}
+
+#[test]
 fn test_nested_blocks() {
     let program = parse_source("if (x)\n\tif (y)\n\t\tz := 1");
     assert!(!program.declarations.is_empty());

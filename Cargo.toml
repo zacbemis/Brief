@@ -9,5 +9,6 @@ members = [
     "crates/brief-vm",
     "crates/brief-runtime",
     "crates/brief-cli",
+    "tests/pipeline",
 ]
 resolver = "2"

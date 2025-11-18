@@ -1,0 +1,21 @@
+[package]
+name = "brief-pipeline-tests"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+brief-lexer = { path = "../../crates/brief-lexer" }
+brief-parser = { path = "../../crates/brief-parser" }
+brief-hir = { path = "../../crates/brief-hir" }
+brief-bytecode = { path = "../../crates/brief-bytecode" }
+brief-vm = { path = "../../crates/brief-vm" }
+brief-runtime = { path = "../../crates/brief-runtime" }
+brief-cli = { path = "../../crates/brief-cli" }
+brief-diagnostic = { path = "../../crates/brief-diagnostic" }
+anyhow = "1.0"
+tempfile = "3.10"
+blake3 = "1.5"
+
+[dev-dependencies]
+insta = "1.38"
+

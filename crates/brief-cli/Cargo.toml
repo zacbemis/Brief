@@ -3,4 +3,18 @@ name = "brief-cli"
 version = "0.1.0"
 edition = "2024"
 
+[[bin]]
+name = "brief"
+path = "src/main.rs"
+
 [dependencies]
+brief-lexer = { path = "../brief-lexer" }
+brief-parser = { path = "../brief-parser" }
+brief-hir = { path = "../brief-hir" }
+brief-vm = { path = "../brief-vm" }
+brief-runtime = { path = "../brief-runtime" }
+brief-diagnostic = { path = "../brief-diagnostic" }
+rustyline = "14.0"
+
+[dev-dependencies]
+tempfile = "3.10"
