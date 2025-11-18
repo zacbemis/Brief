@@ -547,7 +547,9 @@ impl Lexer {
                             let interp_end = self.current_pos();
                             let interp_span = Span::new(self.file_id, interp_start, interp_end);
                             
-                            let interp_kind = if ident.contains('.') || ident.contains('(') {
+                            // Check for path (contains '.' or '(') only once
+                            let has_dot = ident.contains('.');
+                            let interp_kind = if has_dot || ident.contains('(') {
                                 TokenKind::InterpPath(ident)
                             } else {
                                 TokenKind::InterpIdent(ident)
