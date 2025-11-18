@@ -57,6 +57,9 @@ version = "0.1.0"
 [[package]]
 name = "brief-vm"
 version = "0.1.0"
+dependencies = [
+ "brief-bytecode",
+]
 
 [[package]]
 name = "console"
