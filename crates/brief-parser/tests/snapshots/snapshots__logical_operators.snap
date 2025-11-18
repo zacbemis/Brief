@@ -1,0 +1,13 @@
+---
+source: crates/brief-parser/tests/snapshots.rs
+expression: pretty_print_ast(&program)
+---
+Program
+  declarations:
+    VarDecl
+      name: x
+      initializer: BinaryOp(Or)
+          left: BinaryOp(And)
+              left: Boolean(true)
+              right: Boolean(false)
+          right: Boolean(true)

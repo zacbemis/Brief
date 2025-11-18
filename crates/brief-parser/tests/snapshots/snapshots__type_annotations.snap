@@ -1,0 +1,15 @@
+---
+source: crates/brief-parser/tests/snapshots.rs
+expression: pretty_print_ast(&program)
+---
+Program
+  declarations:
+    VarDecl
+      name: x
+      type: Int
+    VarDecl
+      name: arr
+      type: Array(Int, dims: [Fixed(10)])
+    VarDecl
+      name: map
+      type: Map(Int: Array(Str, dims: [Dynamic]))

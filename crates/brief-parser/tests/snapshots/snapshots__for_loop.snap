@@ -1,0 +1,17 @@
+---
+source: crates/brief-parser/tests/snapshots.rs
+expression: pretty_print_ast(&program)
+---
+Program
+  declarations:
+    Error
+    VarDecl
+      name: i
+    Error
+    VarDecl
+      name: i
+    Error
+    Error
+    Error
+    Error
+    Error

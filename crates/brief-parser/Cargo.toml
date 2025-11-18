@@ -7,3 +7,6 @@ edition = "2024"
 brief-ast = { path = "../brief-ast" }
 brief-lexer = { path = "../brief-lexer" }
 brief-diagnostic = { path = "../brief-diagnostic" }
+
+[dev-dependencies]
+insta = "1.38"

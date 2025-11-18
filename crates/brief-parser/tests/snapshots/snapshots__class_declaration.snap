@@ -1,0 +1,19 @@
+---
+source: crates/brief-parser/tests/snapshots.rs
+expression: pretty_print_ast(&program)
+---
+Program
+  declarations:
+    ClassDecl
+      name: Dog
+      methods:
+        MethodDecl
+          name: bark
+          is_instance: false
+          params:
+          body:
+            Block
+              statements:
+                Expr:
+Error
+    Error

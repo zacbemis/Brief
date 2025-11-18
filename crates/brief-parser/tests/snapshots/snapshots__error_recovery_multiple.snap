@@ -1,0 +1,26 @@
+---
+source: crates/brief-parser/tests/snapshots.rs
+expression: pretty_print_ast(&program)
+---
+Program
+  declarations:
+    FuncDecl
+      name: test
+      params:
+      body:
+        Block
+          statements:
+            Expr:
+Error
+    Error
+    Error
+    FuncDecl
+      name: other
+      params:
+      body:
+        Block
+          statements:
+            Expr:
+Error
+    Error
+    Error

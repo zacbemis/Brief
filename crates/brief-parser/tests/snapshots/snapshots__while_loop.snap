@@ -1,0 +1,10 @@
+---
+source: crates/brief-parser/tests/snapshots.rs
+expression: pretty_print_ast(&program)
+---
+Program
+  declarations:
+    Error
+    Error
+    Error
+    Error

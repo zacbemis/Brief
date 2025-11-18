@@ -1,0 +1,15 @@
+---
+source: crates/brief-parser/tests/snapshots.rs
+expression: pretty_print_ast(&program)
+---
+Program
+  declarations:
+    VarDecl
+      name: x
+      initializer: Interpolation
+          parts:
+            Text("Hello ")
+            Ident(name)
+            Text(", you are ")
+            Ident(age)
+            Text(" years old")
