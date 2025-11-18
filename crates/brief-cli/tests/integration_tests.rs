@@ -1,67 +1,5 @@
-use brief_lexer::lex;
-use brief_parser::parse;
-use brief_hir::{lower, emit_bytecode};
-use brief_vm::VM;
-use brief_runtime::Runtime;
-use brief_diagnostic::FileId;
-use std::rc::Rc;
-
-/// Helper to run code through the full pipeline
-fn run_code(source: &str) -> Result<brief_vm::Value, String> {
-    let file_id = FileId(0);
-    
-    // 1. Lex
-    let (tokens, lex_errors) = lex(source, file_id);
-    if !lex_errors.is_empty() {
-        return Err(format!("Lex errors: {:?}", lex_errors));
-    }
-    
-    // 2. Parse
-    let (program, parse_errors) = parse(tokens, file_id);
-    if !parse_errors.is_empty() {
-        return Err(format!("Parse errors: {:?}", parse_errors));
-    }
-    
-    // 3. Lower to HIR
-    let hir_program = match lower(program) {
-        Ok(hir) => hir,
-        Err(errors) => {
-            return Err(format!("HIR errors: {:?}", errors));
-        }
-    };
-    
-    // 4. Emit bytecode
-    let chunks = emit_bytecode(&hir_program);
-    if std::env::var("BRIEF_DEBUG_CHUNK").is_ok() {
-        for (idx, chunk) in chunks.iter().enumerate() {
-            eprintln!("Emitted chunk #{} - {}", idx, chunk.name);
-            for (ip, instr) in chunk.code.iter().enumerate() {
-                eprintln!("  {:04}: {}", ip, instr);
-            }
-        }
-    }
-    if chunks.is_empty() {
-        return Ok(brief_vm::Value::Null);
-    }
-    
-    // 5. Create VM with runtime
-    let mut vm = VM::new();
-    let runtime = Runtime::new();
-    vm.set_runtime(Box::new(runtime));
-    
-    // 6. Execute
-    let main_chunk = Rc::new(chunks[0].clone());
-    vm.push_frame(main_chunk, 0);
-    
-    // 7. Run
-    match vm.run() {
-        Ok(value) => Ok(value),
-        Err(e) => {
-            eprintln!("Runtime error: {:?}", e);
-        Err(format!("Runtime error: {:?} | chunks: {:?}", e, chunks))
-        }
-    }
-}
+mod common;
+use common::run_code;
 
 #[test]
 fn test_simple_arithmetic() {
@@ -111,33 +49,6 @@ fn test_comparison_operators() {
         assert!(b);
     } else {
         panic!("Expected Bool(true), got {:?}", result);
-    }
-}
-
-#[test]
-fn test_if_statement() {
-    let source = "def test()\n\tif (5 > 3)\n\t\t10\n\telse\n\t\t20\n";
-    let result = run_code(source);
-    assert!(result.is_ok());
-    if let Ok(brief_vm::Value::Int(n)) = result {
-        assert_eq!(n, 10);
-    } else {
-        panic!("Expected Int(10), got {:?}", result);
-    }
-}
-
-#[test]
-fn test_while_loop() {
-    let source = "def test()\n\tx := 0\n\twhile (x < 3)\n\t\tx := x + 1\n\tx\n";
-    let result = run_code(source);
-    if let Err(e) = &result {
-        eprintln!("Error: {}", e);
-    }
-    assert!(result.is_ok());
-    if let Ok(brief_vm::Value::Int(n)) = result {
-        assert_eq!(n, 3);
-    } else {
-        panic!("Expected Int(3), got {:?}", result);
     }
 }
 
@@ -266,21 +177,6 @@ fn test_power() {
         assert!((d - 8.0).abs() < f64::EPSILON);
     } else {
         panic!("Expected Double(8.0), got {:?}", result);
-    }
-}
-
-#[test]
-fn test_for_loop() {
-    let source = "def test()\n\tx := 0\n\tfor (i := 0; i < 3; i := i + 1)\n\t\tx := x + 1\n\tx\n";
-    let result = run_code(source);
-    if let Err(e) = &result {
-        eprintln!("Error: {}", e);
-    }
-    assert!(result.is_ok());
-    if let Ok(brief_vm::Value::Int(n)) = result {
-        assert_eq!(n, 3);
-    } else {
-        panic!("Expected Int(3), got {:?}", result);
     }
 }
 

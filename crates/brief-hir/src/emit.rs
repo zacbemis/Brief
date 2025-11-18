@@ -107,6 +107,11 @@ impl Emitter {
         self.chunks[idx].code[ip] = inst;
     }
 
+    fn patch_jump_target(&mut self, ip: usize, target_ip: usize) {
+        let offset = (target_ip as isize - (ip as isize + 1)) as i16;
+        self.patch_offset(ip, offset);
+    }
+
     fn emit_program(&mut self, program: &HirProgram) -> Vec<Chunk> {
         // Emit all function declarations as chunks
         for decl in &program.declarations {
@@ -141,8 +146,8 @@ impl Emitter {
         self.current_chunk = Some(self.chunks.len() - 1);
         self.register_counter = func.params.len() as u8; // Parameters use first registers
         
-        // Emit function body
-        self.emit_block(&func.body);
+        // Emit function body (tail expression returns)
+        self.emit_block(&func.body, true);
         self.emit_null_return();
         
         // Update chunk metadata
@@ -163,7 +168,7 @@ impl Emitter {
         self.register_counter = method.params.len() as u8;
         
         // Emit method body
-        self.emit_block(&method.body);
+        self.emit_block(&method.body, true);
         self.emit_null_return();
         
         // Update chunk metadata
@@ -184,7 +189,7 @@ impl Emitter {
         self.register_counter = ctor.params.len() as u8;
         
         // Emit constructor body
-        self.emit_block(&ctor.body);
+        self.emit_block(&ctor.body, true);
         self.emit_null_return();
         
         // Update chunk metadata
@@ -195,10 +200,91 @@ impl Emitter {
         self.max_registers = 0;
     }
 
-    fn emit_block(&mut self, block: &HirBlock) {
-        for stmt in &block.statements {
+    fn emit_block(&mut self, block: &HirBlock, tail_return: bool) {
+        let stmt_count = block.statements.len();
+        for (idx, stmt) in block.statements.iter().enumerate() {
+            let is_tail = tail_return && idx == stmt_count.saturating_sub(1);
+            if is_tail {
+                match stmt {
+                    HirStmt::Expr(expr, _) => {
+                        let reg = self.allocate_register();
+                        self.emit_expr(expr, reg);
+                        self.emit_instruction(Instruction::new1(Opcode::RET, reg));
+                        continue;
+                    }
+                    HirStmt::If { condition, then_branch, else_branch, .. } => {
+                        let reg = self.allocate_register();
+                        self.emit_if_with_result(condition, then_branch, else_branch, reg);
+                        self.emit_instruction(Instruction::new1(Opcode::RET, reg));
+                        continue;
+                    }
+                    _ => {}
+                }
+            }
             self.emit_stmt(stmt);
         }
+    }
+
+    fn emit_block_value(&mut self, block: &HirBlock, target_reg: u8) {
+        if block.statements.is_empty() {
+            let null_idx = self.add_constant(Constant::Null);
+            self.emit_instruction(Instruction::new2(Opcode::LOADK, target_reg, null_idx));
+            return;
+        }
+
+        let last_idx = block.statements.len() - 1;
+        for (idx, stmt) in block.statements.iter().enumerate() {
+            if idx == last_idx {
+                match stmt {
+                    HirStmt::Expr(expr, _) => {
+                        self.emit_expr(expr, target_reg);
+                    }
+                    HirStmt::If { condition, then_branch, else_branch, .. } => {
+                        self.emit_if_with_result(condition, then_branch, else_branch, target_reg);
+                    }
+                    HirStmt::Return { value, .. } => {
+                        if let Some(expr) = value {
+                            self.emit_expr(expr, target_reg);
+                        } else {
+                            let null_idx = self.add_constant(Constant::Null);
+                            self.emit_instruction(Instruction::new2(Opcode::LOADK, target_reg, null_idx));
+                        }
+                    }
+                    _ => {
+                        self.emit_stmt(stmt);
+                        let null_idx = self.add_constant(Constant::Null);
+                        self.emit_instruction(Instruction::new2(Opcode::LOADK, target_reg, null_idx));
+                    }
+                }
+            } else {
+                self.emit_stmt(stmt);
+            }
+        }
+    }
+
+    fn emit_if_with_result(&mut self, condition: &HirExpr, then_branch: &HirBlock, else_branch: &Option<HirBlock>, result_reg: u8) {
+        let cond_reg = self.allocate_register();
+        self.emit_expr(condition, cond_reg);
+
+        let jmp_if_false_ip = self.get_ip();
+        self.emit_instruction(Instruction::new2(Opcode::JIF, cond_reg, 0));
+
+        self.emit_block_value(then_branch, result_reg);
+        let jump_over_else_ip = self.get_ip();
+        self.emit_instruction(Instruction::new1(Opcode::JMP, 0));
+
+        let else_start_ip = self.get_ip();
+        self.patch_jump_target(jmp_if_false_ip, else_start_ip);
+
+        if let Some(else_branch) = else_branch {
+            self.emit_block_value(else_branch, result_reg);
+        } else {
+            let null_idx = self.add_constant(Constant::Null);
+            self.emit_instruction(Instruction::new2(Opcode::LOADK, result_reg, null_idx));
+        }
+
+        let else_end_ip = self.get_ip();
+        self.patch_jump_target(jump_over_else_ip, else_end_ip);
     }
 
     fn emit_stmt(&mut self, stmt: &HirStmt) {
@@ -259,7 +345,7 @@ impl Emitter {
         self.emit_instruction(Instruction::new2(Opcode::JIF, cond_reg, 0)); // Offset patched later
         
         // Emit then branch
-        self.emit_block(then_branch);
+        self.emit_block(then_branch, false);
         
         let then_end_ip = self.get_ip();
         let else_start_ip = if else_branch.is_some() {
@@ -272,17 +358,13 @@ impl Emitter {
         };
         
         // Patch JIF offset
-        let else_offset = (else_start_ip - jmp_if_false_ip) as i16;
-        self.patch_offset(jmp_if_false_ip, else_offset);
+        self.patch_jump_target(jmp_if_false_ip, else_start_ip);
         
         // Emit else branch if present
         if let Some(else_branch) = else_branch {
-            self.emit_block(else_branch);
+            self.emit_block(else_branch, false);
             let else_end_ip = self.get_ip();
-            
-            // Patch jump over else
-            let jmp_offset = (else_end_ip - else_start_ip) as i16;
-            self.patch_offset(else_start_ip, jmp_offset);
+            self.patch_jump_target(else_start_ip, else_end_ip);
         }
     }
 
@@ -298,7 +380,7 @@ impl Emitter {
         self.emit_instruction(Instruction::new2(Opcode::JIF, cond_reg, 0)); // Offset patched later
         
         // Emit body
-        self.emit_block(body);
+        self.emit_block(body, false);
         
         // Jump back to start
         let loop_end_ip = self.get_ip();
@@ -307,8 +389,7 @@ impl Emitter {
         self.patch_offset(loop_end_ip, back_jmp_offset);
         
         // Patch JIF to jump to end
-        let end_offset = (loop_end_ip + 1 - jmp_if_false_ip) as i16;
-        self.patch_offset(jmp_if_false_ip, end_offset);
+        self.patch_jump_target(jmp_if_false_ip, loop_end_ip + 1);
     }
 
     fn emit_for(&mut self, init: &Option<Box<HirStmt>>, condition: &Option<Box<HirExpr>>, increment: &Option<Box<HirExpr>>, body: &HirBlock) {
@@ -337,7 +418,7 @@ impl Emitter {
         self.emit_instruction(Instruction::new2(Opcode::JIF, cond_reg, 0)); // Offset patched later
         
         // Emit body
-        self.emit_block(body);
+        self.emit_block(body, false);
         
         // Emit increment
         if let Some(increment) = increment {
@@ -352,8 +433,7 @@ impl Emitter {
         self.patch_offset(loop_end_ip, back_jmp_offset);
         
         // Patch JIF to jump to end
-        let end_offset = (loop_end_ip + 1 - jmp_if_false_ip) as i16;
-        self.patch_offset(jmp_if_false_ip, end_offset);
+        self.patch_jump_target(jmp_if_false_ip, loop_end_ip + 1);
     }
 
     fn emit_expr(&mut self, expr: &HirExpr, target_reg: u8) {
@@ -406,8 +486,7 @@ impl Emitter {
                         self.emit_instruction(Instruction::new2(Opcode::JIF, target_reg, 0));
                         self.emit_expr(right, target_reg);
                         let end_ip = self.get_ip();
-                        let offset = (end_ip - jif_ip) as i16;
-                        self.patch_offset(jif_ip, offset);
+                        self.patch_jump_target(jif_ip, end_ip);
                     },
                     brief_ast::BinaryOp::Or => {
                         self.emit_expr(left, target_reg);
@@ -416,10 +495,10 @@ impl Emitter {
                         let skip_ip = self.get_ip();
                         self.emit_instruction(Instruction::new1(Opcode::JMP, 0));
                         let right_start = self.get_ip();
-                        self.patch_offset(jif_ip, (right_start - jif_ip) as i16);
+                        self.patch_jump_target(jif_ip, right_start);
                         self.emit_expr(right, target_reg);
                         let end_ip = self.get_ip();
-                        self.patch_offset(skip_ip, (end_ip - skip_ip) as i16);
+                        self.patch_jump_target(skip_ip, end_ip);
                     },
                     _ => {
                         let left_reg = self.allocate_register();

@@ -351,9 +351,15 @@ impl VM {
             return Err(RuntimeError::InvalidRegister(value_reg));
         }
         let value = frame.registers[value_reg as usize].clone();
+        if std::env::var("BRIEF_TRACE_VM").is_ok() {
+            eprintln!("Registers at return: {:?}", frame.registers);
+        }
         self.pop_frame();
         
         if self.frames.is_empty() {
+            if std::env::var("BRIEF_TRACE_VM").is_ok() {
+                eprintln!("VM returning {:?}", value);
+            }
             Ok(value)
         } else {
             // TODO: Store return value in calling frame

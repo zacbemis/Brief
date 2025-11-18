@@ -47,7 +47,7 @@ fn main() {
             }
         },
         _ => {
-            eprintln!("Too many arguments");
+            eprintln!("{}", CliError::UsageError("Too many arguments".into()));
             print_usage();
             ExitCode::CompileError
         }

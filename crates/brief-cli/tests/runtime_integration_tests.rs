@@ -1,10 +1,5 @@
-use brief_lexer::lex;
-use brief_parser::parse;
-use brief_hir::{lower, emit_bytecode};
-use brief_vm::BuiltinRuntime;
 use brief_runtime::Runtime;
-use brief_diagnostic::FileId;
-use std::rc::Rc;
+use brief_vm::BuiltinRuntime;
 
 #[test]
 fn test_builtin_len_string() {
