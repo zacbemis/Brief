@@ -3,6 +3,7 @@ pub mod symbol;
 pub mod desugar;
 pub mod resolve;
 pub mod error;
+pub mod emit;
 
 pub use hir::*;
 pub use symbol::*;
@@ -19,5 +20,10 @@ pub fn lower(program: Program) -> Result<HirProgram, Vec<HirError>> {
     resolve::resolve(&mut hir_program)?;
     
     Ok(hir_program)
+}
+
+/// Convert HIR to bytecode chunks
+pub fn emit_bytecode(program: &HirProgram) -> Vec<brief_bytecode::Chunk> {
+    emit::emit(program)
 }
 

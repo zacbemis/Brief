@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 brief-ast = { path = "../brief-ast" }
 brief-diagnostic = { path = "../brief-diagnostic" }
+brief-bytecode = { path = "../brief-bytecode" }
 
 [dev-dependencies]
 insta = "1.38"

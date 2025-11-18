@@ -26,6 +26,7 @@ name = "brief-hir"
 version = "0.1.0"
 dependencies = [
  "brief-ast",
+ "brief-bytecode",
  "brief-diagnostic",
  "brief-lexer",
  "brief-parser",
