@@ -26,13 +26,10 @@ Brief is a statically-typed programming language with type inference, featuring:
   - Indentation-based blocks (tabs only)
   - Line and block comments
   - Comprehensive test suite
-
-### 🚧 In Progress
-
-- **Parser** (`brief-parser`): Recursive-descent parser (planned)
-- **AST** (`brief-ast`): Abstract syntax tree types (planned)
-- **Bytecode** (`brief-bytecode`): Register-based bytecode format (planned)
-- **VM** (`brief-vm`): Interpreter with GC (planned)
+  - **Parser** (`brief-parser`): Recursive-descent parser (planned)
+  - **AST** (`brief-ast`): Abstract syntax tree types (planned)
+  - **Bytecode** (`brief-bytecode`): Register-based bytecode format (planned)
+  - **VM** (`brief-vm`): Interpreter with GC (planned)
 
 ### 📋 Planned
 
@@ -194,7 +191,7 @@ Brief/
 ├── Cargo.toml              # Workspace configuration
 ├── crates/
 │   ├── brief-diagnostic/   # Error reporting and diagnostics
-│   ├── brief-lexer/        # Tokenizer (✅ Complete)
+│   ├── brief-lexer/        # Tokenizer
 │   ├── brief-ast/          # Abstract syntax tree types
 │   ├── brief-parser/       # Recursive-descent parser
 │   ├── brief-bytecode/     # Register-based bytecode format
@@ -243,31 +240,27 @@ cargo test -- --nocapture
 ## Roadmap
 
 ### Phase 1: Bootstrap (Current)
-
-- [x] Lexer with full token support
-- [ ] Parser for expressions and statements
-- [ ] Basic VM for arithmetic and control flow
-- [ ] REPL
+- Lexer with full token support
+- Parser for expressions and statements
+- Basic VM for arithmetic and control flow
+- REPL
 
 ### Phase 2: Core Language
-
-- [ ] Functions and closures
-- [ ] Arrays and maps
-- [ ] Classes and objects
-- [ ] Standard library
+- Functions and closures
+- Arrays and maps
+- Classes and objects
+- Standard library
 
 ### Phase 3: Performance
-
-- [ ] Inline caches
-- [ ] Opcode quickening
-- [ ] Garbage collector
-- [ ] Optimizations
+- Inline caches
+- Opcode quickening
+- Garbage collector
+- Optimizations
 
 ### Phase 4: Advanced Features
-
-- [ ] Multi-threading and scheduler
-- [ ] Package manager
-- [ ] FFI support
-- [ ] Future total web support
+- Multi-threading and scheduler
+- Package manager
+- FFI support
+- Future total web support
 
 ---
